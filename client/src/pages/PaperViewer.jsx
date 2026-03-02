@@ -40,6 +40,72 @@ export default function PaperViewer() {
     // Scale
     const [scale, setScale] = useState(1.2);
 
+    // Highlight Hover State
+    const [hoveredRef, setHoveredRef] = useState(null); // { ref, index }
+
+    // Direct DOM manipulation for highlighting to avoid re-rendering text layer
+    useEffect(() => {
+        // 1. Cleanup previous highlights
+        const highlighted = document.querySelectorAll('.citation-highlight');
+        highlighted.forEach(el => el.classList.remove('citation-highlight'));
+
+        if (!hoveredRef) return;
+
+        // 2. Define keywords
+        const { index, ref } = hoveredRef;
+        const keywords = [];
+
+        // Keyword 1: [N]
+        keywords.push(`[${index + 1}]`);
+
+        // Keyword 2: Author
+        if (ref.ref_authors) {
+            // Handle "Bai, S." or "Apple Inc."
+            const parts = ref.ref_authors.split(/[,;]+/);
+            if (parts[0]) {
+                const surname = parts[0].trim().split(/\s+/)[0].replace(/[^a-zA-Z\u4e00-\u9fa5]/g, '');
+                if (surname && surname.length >= 2) keywords.push(surname);
+            }
+        }
+
+        // Keyword 3: Year
+        if (ref.ref_year) {
+            keywords.push(ref.ref_year.toString());
+        }
+
+        // Keyword 4: Title / Text Content (Smart Snippets)
+        const content = ref.ref_title || ref.ref_text;
+        if (content) {
+            // First chunk
+            const cleanContent = content.trim();
+            if (cleanContent.length > 5) {
+                keywords.push(cleanContent.slice(0, 15));
+            }
+
+            // Add longest unique word as a strong signal
+            const words = cleanContent.split(/[^a-zA-Z0-9\u4e00-\u9fa5]+/).filter(w => w.length > 5);
+            // Sort by length desc
+            words.sort((a, b) => b.length - a.length);
+            if (words[0]) keywords.push(words[0]);
+        }
+
+        // Delay to allow text layer to settle
+        const timer = setTimeout(() => {
+            const spans = document.querySelectorAll('.react-pdf__Page__textContent span');
+
+            spans.forEach(span => {
+                const text = span.textContent;
+                // Case-insensitive inclusion check
+                const match = keywords.some(k => text.toLowerCase().includes(k.toLowerCase()));
+                if (match) {
+                    span.classList.add('citation-highlight');
+                }
+            });
+        }, 100);
+
+        return () => clearTimeout(timer);
+    }, [hoveredRef]);
+
     const fetchPaper = useCallback(async () => {
         try {
             setLoading(true);
@@ -367,7 +433,12 @@ export default function PaperViewer() {
                                     </div>
                                 ) : (
                                     references.map((ref, i) => (
-                                        <div key={ref.id} className="ref-item">
+                                        <div
+                                            key={ref.id}
+                                            className="ref-item"
+                                            onMouseEnter={() => setHoveredRef({ ref, index: i })}
+                                            onMouseLeave={() => setHoveredRef(null)}
+                                        >
                                             <div className="ref-item-title">
                                                 <span style={{ color: 'var(--text-muted)', marginRight: 6 }}>[{i + 1}]</span>
                                                 {ref.ref_title || ref.ref_text?.slice(0, 150)}

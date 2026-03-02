@@ -1,15 +1,32 @@
 import { useNavigate } from 'react-router-dom';
 
-export default function PaperCard({ paper, onDelete }) {
+export default function PaperCard({ paper, onDelete, selected, onToggleSelect, selectionMode }) {
     const navigate = useNavigate();
 
     const handleClick = (e) => {
-        if (e.target.closest('.paper-card-actions')) return;
-        navigate(`/paper/${paper.id}`);
+        // Prevent navigation if clicking actions or checkbox
+        if (e.target.closest('.paper-card-actions') || e.target.closest('.paper-select-checkbox')) return;
+
+        if (selectionMode) {
+            onToggleSelect?.(paper.id);
+        } else {
+            navigate(`/paper/${paper.id}`);
+        }
     };
 
     return (
-        <div className="card paper-card" onClick={handleClick}>
+        <div
+            className={`card paper-card ${selected ? 'selected' : ''} ${selectionMode ? 'selection-mode' : ''}`}
+            onClick={handleClick}
+        >
+            <div
+                className={`paper-select-checkbox ${selected ? 'checked' : ''}`}
+                onClick={(e) => { e.stopPropagation(); onToggleSelect?.(paper.id); }}
+                title="选择"
+            >
+                {selected && '✓'}
+            </div>
+
             <div className="paper-card-actions">
                 <button
                     className="btn btn-icon btn-danger btn-sm"

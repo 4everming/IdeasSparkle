@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
@@ -6,6 +7,8 @@ import { initDatabase } from './db.js';
 import papersRouter from './routes/papers.js';
 import annotationsRouter from './routes/annotations.js';
 import linksRouter from './routes/links.js';
+import llmRouter from './routes/llm.js';
+import llmWorkerRouter from './routes/llmWorker.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -23,21 +26,26 @@ app.use('/uploads', express.static(uploadsDir));
 app.use('/api/papers', papersRouter);
 app.use('/api/papers', annotationsRouter);
 app.use('/api/papers', linksRouter);
+app.use('/api/llm', llmRouter);
+app.use('/api/llm/worker', llmWorkerRouter);
 
 // Health check
 app.get('/api/health', (_, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
 
 // Init and start
 (async () => {
+    let dbInitialized = false;
     try {
         await initDatabase();
-        app.listen(PORT, () => {
-            console.log(`🚀 IdeasSparkle server running on http://localhost:${PORT}`);
-        });
+        dbInitialized = true;
     } catch (err) {
-        console.error('❌ Failed to start server:', err.message);
-        console.error('   Make sure MySQL is running and the database "ideas_sparkle" exists.');
-        console.error('   Create it with: CREATE DATABASE ideas_sparkle CHARACTER SET utf8mb4;');
-        process.exit(1);
+        console.warn('⚠️  Database not available, paper features disabled');
     }
+
+    app.listen(PORT, () => {
+        console.log(`🚀 IdeasSparkle server running on http://localhost:${PORT}`);
+        if (!dbInitialized) {
+            console.log('   LLM features available at /api/llm/*');
+        }
+    });
 })();

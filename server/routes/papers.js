@@ -231,4 +231,35 @@ router.delete('/:id', async (req, res) => {
     }
 });
 
+// ========== BATCH DELETE PAPERS ==========
+router.post('/batch-delete', async (req, res) => {
+    try {
+        const { ids } = req.body;
+        if (!Array.isArray(ids) || ids.length === 0) {
+            return res.status(400).json({ error: 'No IDs provided' });
+        }
+
+        const pool = await getPool();
+        // Retrieve filenames to delete from disk
+        const [papers] = await pool.query('SELECT filename FROM papers WHERE id IN (?)', [ids]);
+
+        // Delete files from disk
+        for (const paper of papers) {
+            if (paper.filename) {
+                const filePath = path.join(uploadsDir, paper.filename);
+                if (fs.existsSync(filePath)) {
+                    try { fs.unlinkSync(filePath); } catch (e) { console.warn('Failed to delete file:', filePath); }
+                }
+            }
+        }
+
+        // Delete from DB (cascading deletes annotations/links/refs)
+        await pool.query('DELETE FROM papers WHERE id IN (?)', [ids]);
+
+        res.json({ success: true, deletedCount: ids.length });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 export default router;

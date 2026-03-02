@@ -21,6 +21,8 @@ export const updatePaper = (id, data) =>
     api.put(`/papers/${id}`, data).then(r => r.data);
 export const deletePaper = (id) =>
     api.delete(`/papers/${id}`).then(r => r.data);
+export const batchDeletePapers = (ids) =>
+    api.post('/papers/batch-delete', { ids }).then(r => r.data);
 
 // ===== Annotations =====
 export const getAnnotations = (paperId) =>
