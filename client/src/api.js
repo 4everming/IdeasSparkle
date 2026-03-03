@@ -40,6 +40,10 @@ export const getLinks = (paperId) =>
 export const createLink = (paperId, data) =>
     api.post(`/papers/${paperId}/links`, data).then(r => r.data);
 export const deleteLink = (id) =>
-    api.delete(`/papers/links/${id}`).then(r => r.data);
+    api.delete(`/links/${id}`).then(r => r.data);
+
+// ===== Settings =====
+export const getSettings = () => api.get('/settings').then(r => r.data);
+export const updateSettings = (data) => api.post('/settings', data).then(r => r.data);
 
 export default api;

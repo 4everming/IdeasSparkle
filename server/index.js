@@ -7,8 +7,7 @@ import { initDatabase } from './db.js';
 import papersRouter from './routes/papers.js';
 import annotationsRouter from './routes/annotations.js';
 import linksRouter from './routes/links.js';
-import llmRouter from './routes/llm.js';
-import llmWorkerRouter from './routes/llmWorker.js';
+import settingsRouter from './routes/settings.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -26,8 +25,8 @@ app.use('/uploads', express.static(uploadsDir));
 app.use('/api/papers', papersRouter);
 app.use('/api/papers', annotationsRouter);
 app.use('/api/papers', linksRouter);
-app.use('/api/llm', llmRouter);
-app.use('/api/llm/worker', llmWorkerRouter);
+app.use('/api/settings', settingsRouter);
+console.log('✅ Settings router registered at /api/settings');
 
 // Health check
 app.get('/api/health', (_, res) => res.json({ status: 'ok', time: new Date().toISOString() }));

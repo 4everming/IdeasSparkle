@@ -5,6 +5,7 @@ import fs from 'fs';
 import { v4 as uuid } from 'uuid';
 import { getPool } from '../db.js';
 import { parsePDF, parseCitation } from '../services/pdfParser.js';
+import { parseCitationWithLLM } from '../services/llmService.js';
 
 const router = Router();
 
@@ -73,7 +74,7 @@ router.get('/:id', async (req, res) => {
             'SELECT * FROM links WHERE paper_id = ? ORDER BY created_at DESC', [paper.id]
         );
         const [references] = await pool.execute(
-            'SELECT * FROM `references` WHERE paper_id = ? ORDER BY id', [paper.id]
+            'SELECT * FROM `references` WHERE paper_id = ? ORDER BY sort_order ASC, id ASC', [paper.id]
         );
 
         res.json({ ...paper, annotations, links, references });
@@ -103,9 +104,33 @@ router.post('/upload', upload.array('files', 50), async (req, res) => {
                 [id, meta.title || file.originalname, meta.authors, meta.abstract, file.filename, file.path, meta.pageCount]
             );
 
+            // Fetch llmConfig from DB
+            let llmConfig = null;
+            const [[configRow]] = await pool.execute('SELECT setting_value FROM settings WHERE setting_key = "llm_config"');
+            if (configRow) {
+                try {
+                    llmConfig = JSON.parse(configRow.setting_value);
+                } catch (e) {
+                    console.error('Failed to parse llm_config from DB');
+                }
+            }
+
             // Store references
-            for (const refText of meta.references) {
-                const citation = parseCitation(refText);
+            for (let i = 0; i < meta.references.length; i++) {
+                const refText = meta.references[i];
+                let citation;
+
+                if (llmConfig && llmConfig.apiKey) {
+                    try {
+                        citation = await parseCitationWithLLM(refText, llmConfig);
+                    } catch (e) {
+                        console.warn('LLM parse failed, falling back to regex:', e.message);
+                        citation = parseCitation(refText);
+                    }
+                } else {
+                    citation = parseCitation(refText);
+                }
+
                 const refId = uuid();
                 // Try to match against existing papers
                 let matchedId = null;
@@ -117,9 +142,9 @@ router.post('/upload', upload.array('files', 50), async (req, res) => {
                     if (matches.length > 0) matchedId = matches[0].id;
                 }
                 await pool.execute(
-                    `INSERT INTO \`references\` (id, paper_id, ref_text, ref_title, ref_authors, ref_year, matched_paper_id)
-           VALUES (?, ?, ?, ?, ?, ?, ?)`,
-                    [refId, id, refText, citation.title, citation.authors, citation.year, matchedId]
+                    `INSERT INTO \`references\` (id, paper_id, ref_text, ref_title, ref_authors, ref_year, ref_journal, ref_url, sort_order, matched_paper_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                    [refId, id, refText, citation.title, citation.authors, citation.year, citation.journal, citation.url, i, matchedId]
                 );
             }
 
@@ -172,9 +197,33 @@ router.post('/scan-folder', async (req, res) => {
                 [id, meta.title || filename, meta.authors, meta.abstract, safeName, fullPath, meta.pageCount]
             );
 
+            // Fetch llmConfig from DB
+            let llmConfig = null;
+            const [[configRow]] = await pool.execute('SELECT setting_value FROM settings WHERE setting_key = "llm_config"');
+            if (configRow) {
+                try {
+                    llmConfig = JSON.parse(configRow.setting_value);
+                } catch (e) {
+                    console.error('Failed to parse llm_config from DB');
+                }
+            }
+
             // Store references
-            for (const refText of meta.references) {
-                const citation = parseCitation(refText);
+            for (let i = 0; i < meta.references.length; i++) {
+                const refText = meta.references[i];
+                let citation;
+
+                if (llmConfig && llmConfig.apiKey) {
+                    try {
+                        citation = await parseCitationWithLLM(refText, llmConfig);
+                    } catch (e) {
+                        console.warn('LLM parse failed, falling back to regex:', e.message);
+                        citation = parseCitation(refText);
+                    }
+                } else {
+                    citation = parseCitation(refText);
+                }
+
                 const refId = uuid();
                 let matchedId = null;
                 if (citation.title) {
@@ -185,9 +234,9 @@ router.post('/scan-folder', async (req, res) => {
                     if (matches.length > 0) matchedId = matches[0].id;
                 }
                 await pool.execute(
-                    `INSERT INTO \`references\` (id, paper_id, ref_text, ref_title, ref_authors, ref_year, matched_paper_id)
-           VALUES (?, ?, ?, ?, ?, ?, ?)`,
-                    [refId, id, refText, citation.title, citation.authors, citation.year, matchedId]
+                    `INSERT INTO \`references\` (id, paper_id, ref_text, ref_title, ref_authors, ref_year, ref_journal, ref_url, sort_order, matched_paper_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                    [refId, id, refText, citation.title, citation.authors, citation.year, citation.journal, citation.url, i, matchedId]
                 );
             }
 

@@ -439,16 +439,55 @@ export default function PaperViewer() {
                                             onMouseEnter={() => setHoveredRef({ ref, index: i })}
                                             onMouseLeave={() => setHoveredRef(null)}
                                         >
-                                            <div className="ref-item-title">
+                                            {/* Line 1: Title */}
+                                            <div className="ref-item-title" style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>
                                                 <span style={{ color: 'var(--text-muted)', marginRight: 6 }}>[{i + 1}]</span>
-                                                {ref.ref_title || ref.ref_text?.slice(0, 150)}
+                                                {ref.ref_title || ref.ref_text}
                                             </div>
-                                            {ref.ref_authors && (
-                                                <div className="ref-item-meta">👤 {ref.ref_authors}</div>
-                                            )}
-                                            {ref.ref_year && (
-                                                <div className="ref-item-meta">📅 {ref.ref_year}</div>
-                                            )}
+
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                                {/* Line 2: Authors */}
+                                                {ref.ref_authors && (
+                                                    <div className="ref-item-meta" style={{ color: 'var(--text-secondary)' }}>
+                                                        {ref.ref_authors}
+                                                    </div>
+                                                )}
+
+                                                {/* Line 3: Year */}
+                                                {ref.ref_year && (
+                                                    <div className="ref-item-meta" style={{ color: 'var(--text-muted)' }}>
+                                                        {ref.ref_year}
+                                                    </div>
+                                                )}
+
+                                                {/* Line 4: Journal / Conference */}
+                                                {ref.ref_journal && (
+                                                    <div className="ref-item-meta" style={{ fontStyle: 'italic', color: 'var(--text-accent)' }}>
+                                                        {ref.ref_journal}
+                                                    </div>
+                                                )}
+
+                                                {/* Line 5: URL */}
+                                                {ref.ref_url && (
+                                                    <a
+                                                        href={ref.ref_url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="ref-item-url"
+                                                        style={{
+                                                            fontSize: '0.8rem',
+                                                            color: '#3b82f6',
+                                                            textDecoration: 'underline',
+                                                            wordBreak: 'break-all',
+                                                            marginTop: 2
+                                                        }}
+                                                        onClick={e => e.stopPropagation()}
+                                                    >
+                                                        {ref.ref_url}
+                                                    </a>
+                                                )}
+                                            </div>
+
                                             {ref.matched_paper_id && (
                                                 <Link
                                                     to={`/paper/${ref.matched_paper_id}`}

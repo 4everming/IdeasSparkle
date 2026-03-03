@@ -69,10 +69,21 @@ export async function initDatabase() {
       ref_title VARCHAR(512) DEFAULT '',
       ref_authors VARCHAR(1024) DEFAULT '',
       ref_year VARCHAR(10) DEFAULT '',
+      ref_journal VARCHAR(512) DEFAULT '',
+      ref_url VARCHAR(2048) DEFAULT '',
+      sort_order INT DEFAULT 0,
       matched_paper_id VARCHAR(36) DEFAULT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (paper_id) REFERENCES papers(id) ON DELETE CASCADE,
       FOREIGN KEY (matched_paper_id) REFERENCES papers(id) ON DELETE SET NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
+
+  await p.execute(`
+    CREATE TABLE IF NOT EXISTS settings (
+      setting_key VARCHAR(100) PRIMARY KEY,
+      setting_value TEXT,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
 
